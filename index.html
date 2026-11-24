@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>퀴즈 & 점프 런너 (Quiz & Jump Runner)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e1430;--card:#18204a;--card2:#232d63;--line:rgba(255,255,255,.14);--sub:#aab4e0;--gold:#ffc93c;--ok:#2fd69a;--bad:#ff5778}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden}
+body{font-family:'Noto Sans KR',system-ui,sans-serif;font-weight:700;color:#fff;background:var(--bg);user-select:none;-webkit-user-select:none;touch-action:manipulation}
+button{font:inherit;color:inherit;border:0;cursor:pointer;background:none}
+.jua{font-family:'Jua','Noto Sans KR',sans-serif;font-weight:400}
+.hidden{display:none!important}
+.btn{border-radius:16px;padding:12px 20px;font-weight:900;font-size:17px;background:var(--card2);box-shadow:0 5px 0 rgba(0,0,0,.4);transition:transform .07s,box-shadow .07s}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.4)}
+.btn.pri{background:linear-gradient(135deg,#5b7cff,#8a5cff)}
+.btn.sm{padding:7px 13px;font-size:14px;border-radius:12px;box-shadow:0 3px 0 rgba(0,0,0,.4)}
+
+/* ---------- 메뉴 ---------- */
+#menu{position:fixed;inset:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2vh,18px);padding:16px;text-align:center;
+  background:radial-gradient(800px 500px at 10% 0%,rgba(255,150,60,.22),transparent 60%),radial-gradient(800px 500px at 95% 100%,rgba(91,124,255,.28),transparent 60%),var(--bg)}
+.run{font-size:clamp(40px,7vh,60px);letter-spacing:6px}.run span{display:inline-block;animation:hop .7s ease-in-out infinite}
+.run span:nth-child(2){animation-delay:.12s}.run span:nth-child(3){animation-delay:.24s}.run span:nth-child(4){animation-delay:.36s}
+@keyframes hop{50%{transform:translateY(-12px)}}
+h1{margin:0;font-size:clamp(40px,8vw,72px);line-height:1.05;background:linear-gradient(90deg,#ffd35c,#ff8a3d);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 5px 0 rgba(0,0,0,.35))}
+.lead{margin:0;color:var(--sub);font-weight:500;font-size:clamp(14px,2vw,18px)}
+.modes{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;width:min(900px,100%)}
+.mode{border-radius:22px;padding:16px 8px;box-shadow:0 6px 0 rgba(0,0,0,.4);transition:transform .07s,box-shadow .07s}
+.mode:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.mode .i{font-size:34px;display:block}.mode b{display:block;font-size:22px}.mode small{font-size:12.5px;font-weight:500;opacity:.9}
+.g1{background:linear-gradient(#ffb23c,#f0761f)}.g2{background:linear-gradient(#3fa0ff,#2a62e0)}.g3{background:linear-gradient(#2fcf95,#12976d)}.g4{background:linear-gradient(#ff6f91,#d83a66)}
+@media (max-width:640px){.modes{grid-template-columns:1fr 1fr}}
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:min(900px,100%)}
+.how div{background:rgba(24,32,74,.85);border:1.5px solid var(--line);border-radius:16px;padding:10px;font-size:13px;color:var(--sub);font-weight:500}
+.how b{display:block;color:#fff;font-size:15px;margin-bottom:2px}
+@media (max-width:640px){.how{grid-template-columns:1fr}}
+
+/* ---------- 이름 입력 ---------- */
+.modal{position:fixed;inset:0;z-index:40;background:rgba(6,9,26,.78);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:14px}
+.box{width:min(480px,100%);max-height:94vh;overflow-y:auto;background:var(--card);border:2px solid var(--line);border-radius:26px;padding:22px;text-align:center}
+.box h3{margin:0 0 4px;font-size:30px;color:var(--gold)}.box p{margin:0 0 12px;color:var(--sub);font-weight:500;font-size:14.5px}
+.name{width:100%;padding:12px;border-radius:14px;border:2.5px solid var(--line);background:rgba(0,0,0,.3);color:#fff;font:inherit;font-size:19px;font-weight:900;text-align:center;outline:none;margin-bottom:8px}
+.name:focus{border-color:var(--gold)}
+.name.need{border-color:var(--bad);animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.nrow{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center}.nrow span{font-size:30px;margin-bottom:8px}
+.rowc{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+
+/* ---------- 경기 ---------- */
+#game{position:fixed;inset:0;display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:6px;padding:8px}
+.head{display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(24,32,74,.9);border:1.5px solid var(--line);border-radius:16px;padding:6px 12px}
+.head h2{margin:0;font-size:clamp(17px,2.4vw,24px);color:var(--gold)}
+.head .r{display:flex;align-items:center;gap:8px}
+.tag{padding:4px 12px;border-radius:99px;background:#5b7cff;font-size:13px}
+.clock{font-size:20px;min-width:4.2em;text-align:right}
+.quiz{background:#0a0f28;border:2.5px solid #5b7cff;border-radius:18px;padding:8px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;min-height:62px;position:relative;overflow:hidden}
+.quiz.idle{border-color:var(--line)}
+.quiz .q{font-size:clamp(20px,3.4vw,36px);text-align:center}
+.quiz.idle .q{color:var(--sub);font-size:clamp(15px,2vw,20px)}
+.quiz .lab{padding:3px 10px;border-radius:9px;background:#5b7cff;font-size:12.5px;letter-spacing:1px}
+.quiz .sec{color:var(--gold);font-size:17px;min-width:2.6em;text-align:right}
+.quiz .bar{position:absolute;left:0;bottom:0;height:4px;background:var(--gold)}
+.quiz.ans{border-color:var(--ok)}.quiz.ans .q{color:var(--ok)}
+.field{position:relative;min-height:0;border-radius:18px;overflow:hidden;box-shadow:0 14px 30px rgba(0,0,0,.45)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.ctl{position:absolute;inset:auto 0 8px 0;display:flex;pointer-events:none}
+.slot{flex:1;padding:0 6px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;min-width:0}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;pointer-events:auto;transition:opacity .2s}
+.slot.narrow .opts{grid-template-columns:1fr}
+.opts.off{opacity:0;pointer-events:none}
+.o{border-radius:13px;padding:9px 3px 6px;background:rgba(10,15,40,.94);border:2px solid rgba(255,255,255,.4);font-size:clamp(15px,1.8vw,21px);line-height:1.15;box-shadow:0 4px 0 rgba(0,0,0,.45);min-width:0;overflow:hidden}
+.o:active{transform:translateY(3px)}
+.o small{display:block;font-family:'Noto Sans KR';font-size:10.5px;color:var(--sub);font-weight:700;margin-top:2px}
+@media (hover:none){.o small,.jump small{display:none}}
+.o.right{background:var(--ok);border-color:#fff}.o.wrong{background:var(--bad);border-color:#fff}.o.dim{opacity:.4}
+.jump{pointer-events:auto;border-radius:16px;padding:11px 4px;font-size:clamp(16px,2vw,22px);border:2.5px solid rgba(255,255,255,.5);box-shadow:0 5px 0 rgba(0,0,0,.45)}
+.jump:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.45)}
+.jump small{font-family:'Noto Sans KR';font-size:11px;font-weight:700;opacity:.85;margin-left:4px}
+
+/* ---------- 결과 ---------- */
+.res{display:grid;gap:7px;margin:10px 0}
+.rk{display:grid;grid-template-columns:4.6em 34px 1fr auto;gap:8px;align-items:center;background:rgba(0,0,0,.3);border-radius:14px;padding:9px 12px;border-left:6px solid;text-align:left}
+.rk i{font-style:normal;font-family:'Jua';font-size:20px;color:var(--sub);white-space:nowrap}.rk.first i{color:var(--gold)}
+.rk span.e{font-size:26px}
+.rk b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rk b small{display:block;font-size:12px;color:var(--sub);font-weight:500}
+.rk em{font-style:normal;font-family:'Jua';font-size:19px}
+.myrank{display:inline-block;padding:6px 18px;border-radius:99px;background:var(--gold);color:#2a1a00;font-size:18px;margin:4px 0 8px}
+.rl{display:grid;gap:5px}
+.rr{display:grid;grid-template-columns:2em 1fr auto;gap:8px;align-items:center;background:rgba(255,255,255,.07);border-radius:11px;padding:7px 11px;font-size:15px;text-align:left}
+.rr.me{background:rgba(255,201,60,.2);outline:2px solid var(--gold)}
+.rr i{font-style:normal;text-align:center;color:#8fb0ff}.rr span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rr em{font-style:normal;font-weight:900}
+.rr button{background:#7a1730;border-radius:8px;padding:2px 9px;font-size:13px;margin-left:6px}
+.empty{color:var(--sub);padding:12px;font-weight:500;font-size:14px}
+.note{font-size:12.5px;color:var(--sub);font-weight:500;margin-top:7px}
+</style>
+</head>
+<body>
+
+<!-- ==================== 메뉴 ==================== -->
+<div id="menu">
+  <div class="run"><span>🐰</span><span>🐯</span><span>🐼</span><span>🦊</span></div>
+  <h1 class="jua">퀴즈 &amp; 점프 런너</h1>
+  <p class="lead">장애물을 뛰어넘고 퀴즈를 맞혀 결승선까지 달려요!</p>
+  <div class="modes">
+    <button class="mode g1" onclick="pick(1)"><span class="i">🏆</span><b class="jua">1인 도전</b><small>AI 3명과 대결 · 기록이 랭킹에!</small></button>
+    <button class="mode g2" onclick="pick(2)"><span class="i">🧑‍🤝‍🧑</span><b class="jua">2인 대결</b><small>둘이 동시에 달리기</small></button>
+    <button class="mode g3" onclick="pick(3)"><span class="i">👨‍👩‍👦</span><b class="jua">3인 대결</b><small>셋이 동시에 달리기</small></button>
+    <button class="mode g4" onclick="pick(4)"><span class="i">👨‍👩‍👧‍👦</span><b class="jua">4인 대결</b><small>넷이 동시에 달리기</small></button>
+  </div>
+  <div class="how">
+    <div><b>🦘 점프</b>허들과 바위는 점프로 넘어요. 부딪히면 잠깐 느려져요.</div>
+    <div><b>🧠 퀴즈</b>퀴즈가 나오면 모두 멈춰요. 내 칸의 보기를 눌러 답해요.</div>
+    <div><b>🚀 부스트</b>맞히면 부스트! 연속으로 맞히면 부스트가 더 길어져요. 틀리면 느려져요.</div>
+  </div>
+  <button class="btn sm" onclick="openRank()">🏆 오늘의 랭킹 (1인 도전)</button>
+</div>
+
+<!-- 이름 입력 -->
+<div id="nameM" class="modal hidden"><div class="box">
+  <h3 class="jua" id="nmTitle">선수 등록</h3><p id="nmDesc"></p>
+  <div id="nmRows"></div>
+  <div class="rowc"><button class="btn" onclick="$('nameM').classList.add('hidden')">취소</button><button class="btn pri" onclick="confirmNames()">출발선으로! 🏁</button></div>
+</div></div>
+
+<!-- ==================== 경기 ==================== -->
+<div id="game" class="hidden">
+  <div class="head">
+    <h2 class="jua">🏃 퀴즈 &amp; 점프 런너</h2>
+    <div class="r"><span class="tag" id="modeTag"></span><span class="clock jua" id="clock">0.0초</span><button class="btn sm" onclick="showMenu()">메뉴로</button></div>
+  </div>
+  <div class="quiz idle" id="quiz"><span class="lab" id="qLab" style="visibility:hidden">QUIZ</span><div class="q jua" id="qText">준비…</div><span class="sec jua" id="qSec"></span><div class="bar" id="qBar" style="width:0"></div></div>
+  <div class="field"><canvas id="cv"></canvas><div class="ctl" id="ctl"></div></div>
+</div>
+
+<!-- 결과 -->
+<div id="resultM" class="modal hidden"><div class="box" style="width:min(540px,100%)">
+  <div style="font-size:40px">🎉🏁🎉</div><h3 class="jua">경기 종료!</h3>
+  <div class="res" id="resList"></div>
+  <div id="soloRank" class="hidden"><div class="myrank" id="myRank"></div><div class="rl" id="resRank"></div><div class="note" id="resStatus"></div></div>
+  <div class="rowc"><button class="btn" onclick="showMenu()">처음으로 🏠</button><button class="btn pri" onclick="restart()">다시 하기 🔄</button></div>
+</div></div>
+
+<!-- 랭킹 -->
+<div id="rankM" class="modal hidden"><div class="box">
+  <h3 class="jua">🏆 오늘의 랭킹</h3><p>1인 도전에서 결승선까지 걸린 시간 순위예요</p>
+  <div class="rl" id="rankList"></div><div class="note" id="rankStatus"></div>
+  <div class="rowc" style="margin-top:12px"><button class="btn sm" id="mgBtn" onclick="toggleManage()">🔧 선생님 관리</button><button class="btn sm hidden" id="clrBtn" onclick="clearRank()">오늘 기록 모두 지우기</button><button class="btn sm pri" onclick="$('rankM').classList.add('hidden')">닫기</button></div>
+</div></div>
+
+<script src="board.js"></script>
+<script>
+// =====================================================
+// 퀴즈 & 점프 런너 (업그레이드판)
+// 학생 원작: 1~4명이 칸을 나눠 동시에 달리기, 점프로 장애물 넘기, 퀴즈를 맞히면 부스트·틀리면 감속,
+//           1인은 AI 3명과 대결, 플레이어마다 다른 키와 칸별 버튼
+// 업그레이드: 노트북 화면에 맞춘 넓은 트랙, 내 칸에 보기가 바로 나오는 버튼, 상식 퀴즈를 15문제에서 45문제로 늘리고 정답 알려 주기,
+//            연속 정답 부스트, 동물 선수와 이름, 기록 시간과 1인 도전 오늘의 랭킹
+// =====================================================
+const $ = id=>document.getElementById(id);
+const esc = s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rnd = n=>Math.floor(Math.random()*n);
+const shuffle = a=>{ a = [...a]; for(let i=a.length-1;i>0;i--){ const j = rnd(i+1); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+
+// 경기 규칙 숫자 (학생 원작 그대로)
+const TRACK = 8500, SPEED = 260, GRAVITY = 1650, JUMP = -580;
+const P = [
+  {name:'1P',emo:'🐰',color:'#f43f5e',light:'#fda4af',jump:['KeyW','Space'],quiz:['Digit1','Digit2','Digit3'],lab:{jump:'W',quiz:['1','2','3']}},
+  {name:'2P',emo:'🐯',color:'#3b82f6',light:'#93c5fd',jump:['KeyT'],quiz:['KeyF','KeyG','KeyH'],lab:{jump:'T',quiz:['F','G','H']}},
+  {name:'3P',emo:'🐼',color:'#10b981',light:'#6ee7b7',jump:['KeyI'],quiz:['KeyJ','KeyK','KeyL'],lab:{jump:'I',quiz:['J','K','L']}},
+  {name:'4P',emo:'🦊',color:'#f59e0b',light:'#fcd34d',jump:['ArrowUp'],quiz:['ArrowLeft','ArrowDown','ArrowRight'],lab:{jump:'↑',quiz:['←','↓','→']}}
+];
+// 상식 퀴즈: [문제, 정답, 오답, 오답] (나올 때 순서를 섞어요)
+const BANK = [
+["대한민국의 수도는?","서울","부산","인천"],["태양계에서 가장 큰 행성은?","목성","지구","화성"],["1년은 보통 며칠일까요?","365일","360일","370일"],
+["한글을 만든 왕은?","세종대왕","태조","정조"],["거미의 다리는 몇 개?","8개","6개","10개"],["무지개 색은 보통 몇 가지?","7가지","5가지","9가지"],
+["세계에서 가장 높은 산은?","에베레스트","백두산","한라산"],["올림픽은 몇 년마다 열릴까요?","4년","2년","5년"],["초식 동물이 아닌 것은?","사자","토끼","기린"],
+["컴퓨터의 두뇌 역할을 하는 부품은?","CPU","USB","LED"],["1시간은 몇 분일까요?","60분","100분","30분"],["우리나라의 나라꽃은?","무궁화","개나리","진달래"],
+["빛의 삼원색이 아닌 것은?","노랑","빨강","파랑"],["바다에 사는 포유류는?","고래","상어","참치"],["물이 어는 온도는?","0도","10도","100도"],
+["물이 끓는 온도는?","100도","50도","0도"],["곤충의 다리는 몇 개?","6개","4개","8개"],["지구가 태양을 한 바퀴 도는 시간은?","1년","1달","1일"],
+["삼각형의 변은 몇 개?","3개","4개","5개"],["남한에서 가장 높은 산은?","한라산","지리산","설악산"],["독도는 어느 바다에 있을까요?","동해","서해","남해"],
+["태양과 가장 가까운 행성은?","수성","금성","지구"],["달은 무엇의 둘레를 돌까요?","지구","태양","화성"],["식물이 햇빛으로 양분을 만드는 일은?","광합성","증발","소화"],
+["피를 온몸으로 보내는 곳은?","심장","위","폐"],["숨을 쉴 때 쓰는 기관은?","폐","간","위"],["일주일은 며칠일까요?","7일","5일","10일"],
+["사각형의 꼭짓점은 몇 개?","4개","3개","5개"],["직각은 몇 도일까요?","90도","45도","180도"],["1km는 몇 m일까요?","1000m","100m","10000m"],
+["1분은 몇 초일까요?","60초","100초","30초"],["거북선을 이끈 장군은?","이순신","강감찬","김유신"],["우리나라에서 가장 큰 섬은?","제주도","울릉도","강화도"],
+["개구리의 어릴 때 이름은?","올챙이","병아리","송아지"],["나비가 되기 바로 전 모습은?","번데기","올챙이","알"],["자석에 붙는 것은?","쇠못","나무젓가락","고무줄"],
+["세계에서 가장 넓은 바다는?","태평양","대서양","인도양"],["지도에서 위쪽은 보통 어느 방향?","북쪽","남쪽","동쪽"],["3·1 운동이 일어난 해는?","1919년","1945년","1950년"],
+["광복절은 몇 월 며칠?","8월 15일","3월 1일","10월 9일"],["한글날은 몇 월 며칠?","10월 9일","5월 5일","8월 15일"],["AI를 우리말로 하면?","인공지능","인터넷","자동차"],
+["소의 새끼를 부르는 말은?","송아지","망아지","강아지"],["해가 뜨는 방향은?","동쪽","서쪽","북쪽"],["1m는 몇 cm일까요?","100cm","10cm","1000cm"]
+].map(a=>({q:a[0],ans:a[1],opts:a.slice(1)}));
+function mathQuiz(){
+  const t = ['+','-','×'][rnd(3)]; let a,b,ans;
+  if(t==='+'){ a = rnd(25)+5; b = rnd(25)+5; ans = a+b; } else if(t==='-'){ a = rnd(30)+15; b = rnd(14)+1; ans = a-b; } else { a = rnd(8)+2; b = rnd(8)+2; ans = a*b; }
+  const set = new Set([ans]);
+  while(set.size<3){ const f = ans+(rnd(6)+1)*(Math.random()<.5?1:-1)+(Math.random()<.2?10:0); if(f>0) set.add(f); }
+  return {q:`${a} ${t} ${b} = ?`,ans:String(ans),opts:[...set].map(String)};
+}
+
+// ---------- 효과음 ----------
+let AC = null;
+function tone(f,d=.12,when=0,type='triangle',v=.12,to=0){
+  try{ AC = AC || new (window.AudioContext||window.webkitAudioContext)(); if(AC.state!=='running') AC.resume();
+    const t = AC.currentTime+when, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(f,t); if(to) o.frequency.exponentialRampToValueAtTime(to,t+d);
+    g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0001,t+d); o.connect(g).connect(AC.destination); o.start(t); o.stop(t+d+.02); }catch(e){}
+}
+const snd = {jump(){ tone(280,.15,0,'sine',.13,550); }, boost(){ [400,600,850].forEach((f,i)=>tone(f,.12,i*.08)); }, bad(){ tone(180,.25,0,'sawtooth',.12,90); },
+  tick(){ tone(660,.1); }, go(){ tone(990,.3); }, quiz(){ tone(784,.08); tone(1047,.12,.09); }, win(){ [523,659,784,1047].forEach((f,i)=>tone(f,.18,i*.12,'square',.09)); }};
+
+// ---------- 상태 ----------
+const G = {state:'MENU',humans:1,names:[],players:[],obs:[],parts:[],quiz:null,cool:2,qLeft:0,qMax:8,count:3,time:0,deck:[],reveal:0,myId:null,lastCount:4};
+
+function pick(n){
+  G.humans = n;
+  $('nmTitle').textContent = n===1 ? '🏆 1인 도전' : `${n}인 대결`;
+  $('nmDesc').textContent = n===1 ? 'AI 선수 3명과 달려요. 결승선까지 걸린 시간이 오늘의 랭킹에 올라가요!' : '이름은 안 적어도 돼요. 각자 자기 칸의 버튼이나 키보드로 조작해요.';
+  $('nmRows').innerHTML = Array.from({length:n},(_,i)=>`<div class="nrow"><span>${P[i].emo}</span><input class="name" id="nm${i}" maxlength="8" placeholder="${n===1?'이름(별명)을 적어 주세요':P[i].name+' 이름'}" autocomplete="off"></div>`).join('');
+  $('nameM').classList.remove('hidden'); setTimeout(()=>$('nm0').focus(),50);
+}
+function confirmNames(){
+  const names = Array.from({length:G.humans},(_,i)=>$('nm'+i).value.trim());
+  if(G.humans===1 && !names[0]){ const el = $('nm0'); el.classList.remove('need'); void el.offsetWidth; el.classList.add('need'); el.placeholder = '✏️ 이름(별명)을 먼저 적어 주세요!'; el.focus(); return; }
+  G.names = names.map((v,i)=>v||P[i].name);
+  $('nameM').classList.add('hidden'); start();
+}
+function restart(){ start(); }
+function showMenu(){
+  G.state = 'MENU'; G.quiz = null; G.myId = null;
+  ['game','resultM','nameM'].forEach(id=>$(id).classList.add('hidden')); $('menu').classList.remove('hidden');
+}
+function start(){
+  tone(1,.01,0,'sine',.0001);
+  const total = G.humans===1 ? 4 : G.humans, AI = [['번개 로봇','🤖'],['씽씽 외계인','👽'],['척척 로봇','👾']];
+  G.players = Array.from({length:total},(_,i)=>{
+    const ai = G.humans===1 && i>0;
+    return {id:i,ai,name:ai?AI[i-1][0]:G.names[i],emo:ai?AI[i-1][1]:P[i].emo,color:P[i].color,light:P[i].light,
+      x:80,y:0,vy:0,ground:true,fx:null,fxT:0,msg:'',msgT:0,anim:Math.random()*10,done:false,time:0,hit:new Set(),seen:new Set(),
+      answered:false,fb:null,aiT:0,aiOk:false,correct:0,streak:0,bumps:0,skill:ai?[.78,.68,.58][i-1]:1};
+  });
+  G.obs = []; for(let x=450;x<TRACK-350;x+=280+Math.random()*240){ const h = Math.random()<.6; G.obs.push({x,type:h?'HURDLE':'ROCK',height:h?36:30}); }
+  Object.assign(G,{parts:[],quiz:null,cool:1.5,count:3,time:0,state:'COUNT',deck:shuffle(BANK),reveal:0,myId:null,lastCount:4});
+  $('menu').classList.add('hidden'); $('resultM').classList.add('hidden'); $('game').classList.remove('hidden');
+  $('modeTag').textContent = G.humans===1 ? '1인 도전 (VS AI)' : `${G.humans}인 대결`;
+  buildControls(); quizUI(); resize();
+}
+
+// ---------- 칸마다 조작 버튼 ----------
+function buildControls(){
+  const c = $('ctl'); c.innerHTML = '';
+  G.players.forEach(p=>{
+    const s = document.createElement('div'); s.className = 'slot'; s.dataset.i = p.id;
+    if(!p.ai) s.innerHTML = `<div class="opts off" id="op${p.id}"></div><button class="jump jua" style="background:${p.color}" data-jump="${p.id}">🦘 점프<small>[${p.id===0&&G.humans===1?'W / Space':P[p.id].lab.jump}]</small></button>`;
+    c.appendChild(s);
+  });
+  fitSlots();
+}
+function fitSlots(){ document.querySelectorAll('.slot').forEach(s=>s.classList.toggle('narrow',s.clientWidth<230)); }
+$('ctl').addEventListener('pointerdown',e=>{
+  const j = e.target.closest('[data-jump]'); if(j){ e.preventDefault(); return jump(+j.dataset.jump); }
+  const o = e.target.closest('.o'); if(o){ e.preventDefault(); answer(+o.dataset.p,+o.dataset.k); }
+});
+$('cv').addEventListener('pointerdown',()=>{ if(G.humans===1) jump(0); });     // 1인: 화면 아무 데나 눌러도 점프
+addEventListener('keydown',e=>{
+  if(G.state!=='PLAY') return;
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+  if(e.repeat) return;
+  G.players.forEach(p=>{
+    if(p.ai) return; const c = P[p.id];
+    if(p.id===0 && G.humans>1 ? e.code==='KeyW' : c.jump.includes(e.code)) jump(p.id);
+    const k = c.quiz.indexOf(e.code); if(k>=0) answer(p.id,k);
+  });
+});
+
+function jump(i){
+  const p = G.players[i]; if(G.state!=='PLAY' || !p || p.done || !p.ground) return;
+  p.vy = JUMP; p.ground = false; puff(p.x,0,'#e2e8f0',6); if(!p.ai) snd.jump();
+}
+
+// ---------- 퀴즈 ----------
+function newQuiz(){
+  let q;
+  if(Math.random()<.5) q = mathQuiz(); else { if(!G.deck.length) G.deck = shuffle(BANK); q = G.deck.pop(); }   // 같은 문제가 또 나오지 않게 카드처럼 뽑아요
+  G.quiz = {q:q.q,ans:q.ans,opts:shuffle(q.opts)}; G.qLeft = G.qMax; snd.quiz();
+  G.players.forEach(p=>{ p.answered = false; p.fb = null; if(p.ai && !p.done){ p.aiT = 1.2+Math.random()*2.3; p.aiOk = Math.random()<p.skill; } });
+  quizUI();
+}
+function quizUI(){
+  const b = $('quiz'), q = G.quiz;
+  b.classList.toggle('idle',!q && !G.reveal); b.classList.toggle('ans',!q && G.reveal>0);
+  $('qLab').style.visibility = q ? 'visible' : 'hidden';
+  if(q){ $('qText').textContent = q.q; }
+  else if(G.reveal<=0){ $('qText').textContent = G.state==='COUNT' ? '준비…' : '🏃 달려요! 곧 다음 퀴즈가 나와요'; $('qSec').textContent = ''; $('qBar').style.width = 0; }
+  G.players.forEach(p=>{
+    if(p.ai) return; const el = $('op'+p.id); if(!el) return;
+    if(!q){ el.classList.add('off'); return; }
+    el.classList.toggle('off',p.done);
+    el.innerHTML = q.opts.map((o,k)=>{
+      let cls = ''; if(p.answered){ cls = o===q.ans ? 'right' : k===p.pick ? 'wrong' : 'dim'; }
+      return `<button class="o jua ${cls}" data-p="${p.id}" data-k="${k}">${esc(o)}<small>${P[p.id].lab.quiz[k]}</small></button>`;
+    }).join('');
+  });
+}
+function answer(i,k){
+  const p = G.players[i], q = G.quiz; if(G.state!=='PLAY' || !q || !p || p.done || p.answered) return;
+  p.answered = true; p.pick = k;
+  if(q.opts[k]===q.ans){
+    p.correct++; p.streak++;
+    p.fx = 'BOOST'; p.fxT = 2.6+Math.min(p.streak-1,3)*.5;          // 연속으로 맞히면 부스트가 길어져요
+    p.msg = p.streak>=2 ? `${p.streak}연속! 부스트!! 🚀` : '부스트!! 🚀'; p.msgT = 1.5; puff(p.x,p.y,'#38bdf8',18); if(!p.ai) snd.boost();
+  }else{
+    p.streak = 0; p.fx = 'SLOW'; p.fxT = 2.2; p.msg = '오답 감속 🐌'; p.msgT = 1.5; puff(p.x,p.y,'#ef4444',12); if(!p.ai) snd.bad();
+  }
+  quizUI();
+  if(G.players.filter(x=>!x.done).every(x=>x.answered)) G.qLeft = Math.min(G.qLeft,.5);
+}
+function closeQuiz(){
+  const q = G.quiz; if(!q) return;
+  G.players.forEach(p=>{ if(!p.done && !p.answered){ p.streak = 0; p.fx = 'SLOW'; p.fxT = 1.5; p.msg = '시간 초과 🐌'; p.msgT = 1.2; } });
+  G.quiz = null; G.cool = 2.5; G.reveal = 1.3;
+  $('qText').textContent = `정답: ${q.ans}`; $('qSec').textContent = ''; $('qBar').style.width = 0;   // 정답을 알려 줘요
+  quizUI();
+}
+
+function puff(x,z,color,n){ for(let i=0;i<n;i++) G.parts.push({d:x,ox:(Math.random()-.5)*24,z,vx:(Math.random()-.5)*110,vd:(Math.random()-.5)*120,vz:-(Math.random()*120+40),life:.4+Math.random()*.3,max:.7,color,size:3+Math.random()*3.5}); }
+
+// ---------- 매 순간 계산 ----------
+function update(dt){
+  if(G.state==='COUNT'){
+    G.count -= dt; const n = Math.ceil(G.count);
+    if(n!==G.lastCount && n>0){ G.lastCount = n; snd.tick(); }
+    if(G.count<=0){ G.state = 'PLAY'; snd.go(); quizUI(); }
+    return;
+  }
+  if(G.state!=='PLAY') return;
+  G.time += dt; $('clock').textContent = G.time.toFixed(1)+'초';
+  if(G.reveal>0){ G.reveal -= dt; if(G.reveal<=0) quizUI(); }
+  if(!G.quiz){ G.cool -= dt; if(G.cool<=0 && G.reveal<=0) newQuiz(); }
+  else{
+    G.qLeft -= dt; $('qSec').textContent = Math.max(0,Math.ceil(G.qLeft))+'초'; $('qBar').style.width = clamp(G.qLeft/G.qMax*100,0,100)+'%';
+    if(G.qLeft<=0) closeQuiz();
+  }
+  G.players.forEach(p=>{
+    if(p.done) return;
+    if(p.ai){
+      // AI: 장애물마다 한 번만 "넘을지" 정해요 (가끔 실수해요)
+      const o = G.obs.find(o=>o.x>p.x && o.x-p.x<115 && !p.seen.has(o));
+      if(o && p.ground){ p.seen.add(o); if(Math.random()<.72+p.skill*.2) jump(p.id); }
+      if(G.quiz && !p.answered){ p.aiT -= dt; if(p.aiT<=0){ const a = G.quiz.opts.indexOf(G.quiz.ans); answer(p.id,p.aiOk?a:(a+1+rnd(2))%3); } }
+    }
+    const solving = !!G.quiz && !p.answered;      // 퀴즈를 푸는 동안은 제자리에 멈춰요
+    let v = solving ? 0 : SPEED;
+    if(p.fxT>0){
+      p.fxT -= dt;
+      if(!solving){
+        if(p.fx==='BOOST'){ v = SPEED*1.65; if(Math.random()<.4) puff(p.x-10,p.y,'#38bdf8',1); }
+        else if(p.fx==='SLOW') v = SPEED*.55; else if(p.fx==='STUN') v = SPEED*.35;
+      }
+      if(p.fxT<=0) p.fx = null;
+    }
+    if(p.msgT>0){ p.msgT -= dt; if(p.msgT<=0) p.msg = ''; }
+    if(!solving){ p.x += v*dt; p.anim += v/18*dt; }
+    if(!p.ground){ p.y += p.vy*dt; p.vy += GRAVITY*dt; if(p.y>=0){ p.y = 0; p.vy = 0; p.ground = true; } }
+    G.obs.forEach(o=>{
+      if(p.hit.has(o) || Math.abs(p.x-o.x)>=20) return;
+      if(p.fx==='BOOST'){ p.hit.add(o); puff(o.x,-10,'#fbbf24',10); }             // 부스트 중에는 장애물을 뚫고 지나가요
+      else if(!solving && p.y>-o.height+8){ p.hit.add(o); p.bumps++; p.fx = 'STUN'; p.fxT = 1.1; p.msg = '쿵! 💫'; p.msgT = 1; puff(p.x,p.y,'#f87171',12); if(!p.ai) snd.bad(); }
+    });
+    if(p.x>=TRACK){ p.x = TRACK; p.done = true; p.time = G.time; if(!p.ai) snd.win(); }
+  });
+  for(let i=G.parts.length-1;i>=0;i--){ const t = G.parts[i]; t.ox += t.vx*dt; t.d += t.vd*dt; t.z += t.vz*dt; t.life -= dt; if(t.life<=0) G.parts.splice(i,1); }
+  // 사람 선수가 모두 들어오면 경기 끝 (1인 도전은 내가 들어오면 끝)
+  if(G.players.filter(p=>!p.ai).every(p=>p.done)){ G.state = 'END'; G.quiz = null; quizUI(); setTimeout(showResult,900); }
+}
+
+// ---------- 결과 ----------
+function showResult(){
+  if(G.state!=='END') return;
+  const order = [...G.players].sort((a,b)=>(a.done?a.time:1e9)-(b.done?b.time:1e9) || b.x-a.x);
+  $('resList').innerHTML = order.map((p,i)=>`<div class="rk ${i===0?'first':''}" style="border-color:${p.color}"><i>${['🥇 1위','🥈 2위','🥉 3위','4위'][i]}</i><span class="e">${p.emo}</span>
+    <b>${esc(p.name)}<small>퀴즈 ${p.correct}개 정답 · 장애물 ${p.bumps}번 쿵</small></b><em>${p.done?p.time.toFixed(2)+'초':'완주 전'}</em></div>`).join('');
+  const solo = G.humans===1; $('soloRank').classList.toggle('hidden',!solo);
+  if(solo){ const me = G.players[0]; G.myId = Board.submit({name:me.name,t:Math.round(me.time*1000),c:me.correct}); renderResRank(); }
+  $('resultM').classList.remove('hidden');
+}
+
+// ---------- 오늘의 랭킹 (부스 공용, 1인 도전) ----------
+const Board = typeof createBoard==='function' ? createBoard('runner') : {online:false,user:null,today:()=>[],submit:()=>null,isMine:()=>false,onChange(){},init(){},login(){},remove(){},clearToday(){}};
+let manage = false;
+const ranked = ()=>Board.today().slice().sort((a,b)=>a.t-b.t || a.at-b.at);
+const rowHtml = (r,i,me,del)=>`<div class="rr ${me?'me':''}"><i>${i<3?['🥇','🥈','🥉'][i]:i+1}</i><span>${esc(r.name)}</span><em>${(r.t/1000).toFixed(2)}초${del?`<button onclick="delRank(${i})">✕</button>`:''}</em></div>`;
+const statusText = ()=>Board.online ? '🟢 오늘 부스에서 도전한 모든 친구의 기록이에요' : '🟡 인터넷에 연결되지 않아 이 기기에서 한 기록만 보여요';
+function renderResRank(){
+  if(!G.myId) return;
+  const rows = ranked(), me = rows.findIndex(r=>Board.isMine(r,[G.myId]));
+  $('myRank').textContent = me<0 ? '기록을 저장했어요' : rows.length===1 ? '오늘의 첫 번째 기록!' : `오늘 ${rows.length}명 중 ${me+1}등!`;
+  $('resRank').innerHTML = rows.slice(0,5).map((r,i)=>rowHtml(r,i,i===me)).join('')+(me>=5?rowHtml(rows[me],me,true):'');
+  $('resStatus').textContent = statusText();
+}
+function renderRank(){
+  const rows = ranked(), ids = G.myId ? [G.myId] : [];
+  $('rankList').innerHTML = rows.length ? rows.slice(0,30).map((r,i)=>rowHtml(r,i,Board.isMine(r,ids),manage)).join('') : '<div class="empty">아직 기록이 없어요. 첫 번째 주인공이 되어 보세요!</div>';
+  $('rankStatus').textContent = statusText();
+  $('mgBtn').textContent = manage ? '🔧 관리 끝내기' : '🔧 선생님 관리'; $('clrBtn').classList.toggle('hidden',!manage);
+}
+function openRank(){ manage = false; renderRank(); $('rankM').classList.remove('hidden'); }
+async function toggleManage(){
+  if(manage){ manage = false; return renderRank(); }
+  if(Board.online && !Board.user){ try{ await Board.login(); }catch(e){ alert('로그인하지 못했어요. 선생님 계정으로 다시 해 보세요.'); return; } }
+  manage = true; renderRank();
+}
+async function delRank(i){
+  const r = ranked()[i]; if(!r || !confirm(`${r.name} (${(r.t/1000).toFixed(2)}초) 기록을 지울까요?`)) return;
+  try{ await Board.remove(r); }catch(e){ alert('지우지 못했어요. 선생님 계정인지 확인해 주세요.'); }
+  renderRank();
+}
+async function clearRank(){
+  if(!confirm('오늘 퀴즈 런너 기록을 모두 지울까요? 되돌릴 수 없어요.')) return;
+  try{ await Board.clearToday(); }catch(e){ alert('지우지 못했어요. 선생님 계정인지 확인해 주세요.'); }
+  renderRank();
+}
+Board.onChange(()=>{ if(!$('rankM').classList.contains('hidden')) renderRank(); if(!$('resultM').classList.contains('hidden')) renderResRank(); });
+// 서버 랭킹을 읽을 수 있을 때만 연결해요. 안 되면 이 기기에 보관해 두었다가 다음에 올려요.
+(async ()=>{
+  if(typeof loadFirebase!=='function') return;
+  try{ const f = await loadFirebase(); await f.fs.getDocs(f.fs.query(f.fs.collection(f.db,'runner'),f.fs.limit(1))); await Board.init(); }
+  catch(e){ console.warn('공용 랭킹에 연결하지 못해 이 기기에만 저장해요',e); }
+})();
+
+// ---------- 그리기 ----------
+const cv = $('cv'), ctx = cv.getContext('2d'); let W = 800, H = 400;
+function resize(){
+  const r = cv.parentElement.getBoundingClientRect(); if(!r.width) return;
+  const d = Math.min(2,devicePixelRatio||1); W = r.width; H = r.height; cv.width = W*d; cv.height = H*d; ctx.setTransform(d,0,0,d,0,0); fitSlots();
+}
+addEventListener('resize',resize);
+const EMO = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+function draw(t){
+  ctx.fillStyle = '#0e1430'; ctx.fillRect(0,0,W,H);
+  const n = G.players.length; if(!n) return;
+  const lw = W/n, k = clamp(lw/170,.9,1.9);                 // 칸이 넓으면 선수와 장애물도 크게
+  G.players.forEach((p,idx)=>{
+    const L = idx*lw, cx = L+lw/2, base = H*.5, Y = d=>base-(d-p.x);      // 선수는 화면 가운데, 트랙이 아래로 흘러요
+    ctx.save(); ctx.beginPath(); ctx.rect(L,0,lw,H); ctx.clip();
+    // 트랙
+    ctx.fillStyle = idx%2 ? '#b8452f' : '#c44f37'; ctx.fillRect(L,0,lw,H);
+    const s0 = Math.floor((p.x-H)/80)*80;
+    for(let d=s0;d<p.x+H;d+=80){
+      const y = Y(d+80), even = Math.floor(d/80)%2===0;
+      ctx.fillStyle = even ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)'; ctx.fillRect(L,y,lw,80);
+      ctx.fillStyle = even ? '#f8fafc' : '#1e293b'; ctx.fillRect(L,y,7,80); ctx.fillRect(L+lw-7,y,7,80);
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for(let d=Math.ceil((p.x-H)/1000)*1000;d<p.x+H;d+=1000){      // 거리 표시
+      if(d<=0 || d>=TRACK) continue; const y = Y(d);
+      ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(L+7,y-1.5,lw-14,3);
+      ctx.font = `${14*k}px "Jua",sans-serif`; ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.textAlign = 'left'; ctx.fillText(`${Math.round((TRACK-d)/100)}m 남음`,L+14,y-12*k); ctx.textAlign = 'center';
+    }
+    // 결승선
+    const fy = Y(TRACK);
+    if(fy>-80 && fy<H+80){
+      const cols = Math.max(6,Math.floor((lw-14)/18)), cw = (lw-14)/cols, ch = 14;
+      for(let r=0;r<3;r++) for(let c=0;c<cols;c++){ ctx.fillStyle = (r+c)%2 ? '#0f172a' : '#fff'; ctx.fillRect(L+7+c*cw,fy-42+r*ch,cw+.5,ch); }
+      ctx.font = `${18*k}px "Jua",sans-serif`; ctx.fillStyle = '#ffd35c'; ctx.fillText('🏁 FINISH 🏁',cx,fy-58);
+    }
+    // 장애물
+    const ow = Math.min(64,lw*.3);
+    G.obs.forEach(o=>{
+      const y = Y(o.x); if(y<-60 || y>H+60) return;
+      ctx.globalAlpha = p.hit.has(o) ? .35 : 1;
+      ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(cx,y+5,ow+4,8,0,0,6.3); ctx.fill();
+      if(o.type==='HURDLE'){
+        ctx.fillStyle = '#cbd5e1'; ctx.fillRect(cx-ow,y-24*k,6,24*k); ctx.fillRect(cx+ow-6,y-24*k,6,24*k);
+        ctx.fillStyle = '#ef4444'; ctx.fillRect(cx-ow-3,y-30*k,(ow+3)*2,11*k);
+        ctx.fillStyle = '#fff'; for(let s=-2;s<=2;s+=2) ctx.fillRect(cx+s*ow*.3-ow*.12,y-30*k,ow*.24,11*k);
+      }else{
+        ctx.fillStyle = '#64748b'; ctx.beginPath(); ctx.moveTo(cx-ow*.8,y); ctx.lineTo(cx-ow*.55,y-24*k); ctx.lineTo(cx+ow*.1,y-30*k); ctx.lineTo(cx+ow*.6,y-20*k); ctx.lineTo(cx+ow*.8,y); ctx.fill();
+        ctx.fillStyle = '#94a3b8'; ctx.beginPath(); ctx.moveTo(cx-ow*.45,y-8*k); ctx.lineTo(cx-ow*.3,y-21*k); ctx.lineTo(cx+ow*.15,y-19*k); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    });
+    // 반짝이
+    G.parts.forEach(q=>{ const y = Y(q.d)+q.z*.4; if(y<0 || y>H) return; ctx.globalAlpha = Math.max(0,q.life/q.max); ctx.fillStyle = q.color; ctx.beginPath(); ctx.arc(cx+q.ox*k,y,q.size*k*.8,0,6.3); ctx.fill(); ctx.globalAlpha = 1; });
+    // 선수
+    const solving = !!G.quiz && !p.answered && !p.done, jh = Math.abs(p.y), sc = k*(1+jh/220), py = base-jh*.5*k;
+    const sh = Math.max(.45,1-jh/180);
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(cx,base+6*k,20*k*sh,8*k*sh,0,0,6.3); ctx.fill();
+    if(p.fx==='BOOST' && !solving){      // 부스트 불꽃과 속도선
+      ctx.strokeStyle = 'rgba(125,211,252,.7)'; ctx.lineWidth = 3;
+      for(let i=0;i<5;i++){ const lx = cx+(i-2)*9*k, ly = py+18*k+((t*400+i*37)%40); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx,ly+22*k); ctx.stroke(); }
+      const g = ctx.createRadialGradient(cx,py-12*k,2,cx,py-12*k,34*k); g.addColorStop(0,'rgba(56,189,248,.55)'); g.addColorStop(1,'rgba(56,189,248,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx,py-12*k,34*k,0,6.3); ctx.fill();
+    }else if(solving){
+      ctx.fillStyle = 'rgba(250,204,21,.2)'; ctx.strokeStyle = 'rgba(250,204,21,.85)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx,py-14*k,30*k,0,6.3); ctx.fill(); ctx.stroke();
+    }
+    ctx.save(); ctx.translate(cx,py); ctx.scale(sc,sc);
+    const sw = (!solving && p.ground && !p.done) ? Math.sin(p.anim) : 0;
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.ellipse(0,2,17,7,0,0,6.3); ctx.fill();          // 선수 색 발판
+    ctx.rotate(sw*.13); if(p.fx==='STUN') ctx.rotate(Math.sin(t*30)*.2);
+    ctx.font = `34px ${EMO}`; ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText(p.emo,0,4+Math.abs(sw)*-3);
+    ctx.restore();
+    const msg = solving ? '문제 푸는 중… 🤔' : p.done ? `골인! ${p.time.toFixed(2)}초 🎉` : p.msg;
+    if(msg){
+      ctx.font = `${15*k}px "Jua",sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const y = py-48*sc; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.strokeText(msg,cx,y);
+      ctx.fillStyle = solving ? '#fde047' : p.done ? '#fff' : p.fx==='BOOST' ? '#7dd3fc' : '#fecaca'; ctx.fillText(msg,cx,y);
+    }
+    // 이름표와 진행률
+    const bw = Math.min(lw-18,190), pct = Math.min(1,p.x/TRACK);
+    ctx.fillStyle = 'rgba(14,20,48,.88)'; ctx.beginPath(); ctx.roundRect(cx-bw/2,8,bw,44,10); ctx.fill(); ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = '700 14px "Noto Sans KR",sans-serif'; ctx.textBaseline = 'middle'; ctx.fillText(`${p.emo} ${p.name}`,cx,23,bw-12);
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.roundRect(cx-bw/2+10,36,bw-20,8,4); ctx.fill();
+    ctx.fillStyle = p.light; ctx.beginPath(); ctx.roundRect(cx-bw/2+10,36,Math.max(8,(bw-20)*pct),8,4); ctx.fill();
+    ctx.fillStyle = '#0b1026'; ctx.fillRect(L+lw-2,0,3,H);
+    ctx.restore();
+  });
+  if(G.state==='COUNT'){
+    ctx.fillStyle = 'rgba(14,20,48,.55)'; ctx.fillRect(0,0,W,H);
+    ctx.font = '120px "Jua",sans-serif'; ctx.fillStyle = '#ffd35c'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(Math.max(1,Math.ceil(G.count)),W/2,H/2);
+  }
+}
+let last = 0;
+function loop(ts){
+  const dt = Math.min((ts-last)/1000||0,.1); last = ts;
+  if(G.state!=='MENU'){ update(dt); draw(ts/1000); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
